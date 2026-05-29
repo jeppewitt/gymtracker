@@ -168,3 +168,16 @@ Efter første implementering blev designet og workout-flowet ændret på brugere
   trykker **Afslut** (progressiv save pr. sæt er udgået sammen med trin-flowet).
 - Komponentændring: `StrengthCard`/`PlyoCard`/`RepInput` erstattet af `ExerciseCard` + `SetRow`.
   `queries.insertSet` erstattet af `queries.insertManySets`.
+
+## Revision 2026-05-29 — Opvarmningsvægt
+
+Opvarmningssættet forudfyldtes tidligere med samme vægt som arbejdssættene. Nu beregnes det
+som **50 % af den foreslåede arbejdsvægt**, rundet til nærmeste 2,5 kg
+(`progression.warmupWeight()`). Brugeren kan stadig overskrive feltet.
+
+Begrundelse: gængse opvarmnings-protokoller ramper op mod arbejdsvægten, hvor det letteste
+ramp-sæt typisk ligger omkring 50 % (forløb à la tom stang → ~50 % → ~75 % → ~90 %). Da appen kun
+logger ét opvarmningssæt, bruges det letteste ramp-trin (~50 %) som udgangspunkt. Kilder:
+- A Workout Routine — Warm Up Sets: https://www.aworkoutroutine.com/warm-up-sets/
+- Hevy — Warm Up Sets Explained: https://www.hevyapp.com/warm-up-sets/
+- Bay Strength — Calculating your warmup sets: https://www.baystrength.com/calculating-warmup-sets/

@@ -6,7 +6,7 @@ import {
   createWorkout,
   insertManySets,
 } from "../data/queries";
-import { suggestWeight } from "../lib/progression";
+import { suggestWeight, warmupWeight } from "../lib/progression";
 import ExerciseCard from "../components/ExerciseCard";
 import Button from "../components/Button";
 
@@ -37,10 +37,12 @@ export default function Workout() {
             const last = await fetchLastWorkSets(e.id);
             const s = suggestWeight(e, last);
             const w = s != null ? String(s).replace(".", ",") : "";
+            const wu = warmupWeight(s);
+            const wuStr = wu != null ? String(wu).replace(".", ",") : "";
             return [
               e.id,
               {
-                warmupWeight: w,
+                warmupWeight: wuStr,
                 sets: [
                   { weight: w, reps: "8" },
                   { weight: w, reps: "8" },

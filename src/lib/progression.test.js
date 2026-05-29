@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { incrementFor, suggestWeight } from "./progression";
+import { incrementFor, suggestWeight, warmupWeight } from "./progression";
 
 describe("incrementFor", () => {
   it("compound is 2.5", () => {
@@ -40,5 +40,28 @@ describe("suggestWeight", () => {
     const last = [{ reps: 10, weight: 40 }, { reps: 10, weight: 40 }];
     const pullups = { type: "compound", name: "Pull-ups" };
     expect(suggestWeight(pullups, last)).toBe(41.25);
+  });
+});
+
+describe("warmupWeight", () => {
+  it("is null when there is no working weight", () => {
+    expect(warmupWeight(null)).toBeNull();
+  });
+
+  it("is ~50% of the working weight, rounded to nearest 2.5 kg", () => {
+    expect(warmupWeight(100)).toBe(50);
+    expect(warmupWeight(60)).toBe(30);
+    expect(warmupWeight(50)).toBe(25);
+  });
+
+  it("rounds to the nearest 2.5 kg increment", () => {
+    // 80 * 0.5 = 40 -> 40
+    expect(warmupWeight(80)).toBe(40);
+    // 45 * 0.5 = 22.5 -> 22.5
+    expect(warmupWeight(45)).toBe(22.5);
+  });
+
+  it("stays at 0 for bodyweight-only (e.g. pull-ups with no added weight)", () => {
+    expect(warmupWeight(0)).toBe(0);
   });
 });
