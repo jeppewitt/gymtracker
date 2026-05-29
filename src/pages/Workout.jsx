@@ -36,7 +36,7 @@ export default function Workout() {
           strength.map(async (e) => {
             const last = await fetchLastWorkSets(e.id);
             const s = suggestWeight(e, last);
-            const w = s != null ? String(s) : "";
+            const w = s != null ? String(s).replace(".", ",") : "";
             return [
               e.id,
               {
