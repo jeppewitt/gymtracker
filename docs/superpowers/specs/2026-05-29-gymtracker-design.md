@@ -150,6 +150,21 @@ Pull-ups behandles som compound men med 1,25 kg-increment (special-case på øve
 
 ## Åbne afhængigheder
 
-- **Supabase-provisionering:** Ingen Supabase MCP-server er pt. forbundet. Enten forbindes en
-  Supabase MCP-server (personal access token), ellers kører brugeren `supabase/schema.sql` manuelt
-  i Supabase SQL Editor. Spec'en er uafhængig af valget.
+- **Supabase-provisionering:** Brugeren kører `supabase/schema.sql` manuelt i Supabase SQL Editor
+  (RLS slået til med åbne policies for anon-nøglen).
+
+## Revision 2026-05-29 — UI-redesign
+
+Efter første implementering blev designet og workout-flowet ændret på brugerens ønske:
+
+- **Lyst tema** (lys baggrund, hvide kort, indigo→violet gradient-accent) i stedet for mørkt.
+- **Workout = én skærm:** alle øvelser som kort i en scroll-liste i stedet for én øvelse ad gangen.
+  Hvert styrkekort viser warmup-række + 2 arbejdssæt med inline-redigerbare felter
+  (vægt × reps). Felterne er **forudfyldt** med foreslået vægt + 8 reps; brugeren retter kun
+  det der afviger.
+- **Vægt er nu redigerbar** pr. sæt (tidligere "låst til forslag"). Progressionen bruges som
+  forudfyldning, ikke som lås.
+- **Gem samlet:** `workouts`-rækken oprettes og alle sæt indsættes i ét kald, når brugeren
+  trykker **Afslut** (progressiv save pr. sæt er udgået sammen med trin-flowet).
+- Komponentændring: `StrengthCard`/`PlyoCard`/`RepInput` erstattet af `ExerciseCard` + `SetRow`.
+  `queries.insertSet` erstattet af `queries.insertManySets`.

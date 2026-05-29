@@ -1,0 +1,12 @@
+- generic [ref=e5]:
+  - generic [ref=e6]:
+    - button "Afbryd" [ref=e7] [cursor=pointer]
+    - generic [ref=e8]: 3 / 7
+  - generic [ref=e36]:
+    - generic [ref=e37]:
+      - paragraph [ref=e38]: Compound
+      - heading "Squats" [level=1] [ref=e39]
+    - generic [ref=e40]:
+      - paragraph [ref=e41]: Indtast startvægt (kg)
+      - textbox "0" [ref=e42]
+      - button "Bekræft vægt" [ref=e43] [cursor=pointer]

@@ -1,0 +1,7 @@
+- generic [ref=e4]:
+  - generic [ref=e5]:
+    - button "← Tilbage" [ref=e6] [cursor=pointer]
+    - heading "Historik" [level=1] [ref=e7]
+  - heading "Mandag" [level=2] [ref=e9]
+  - heading "Onsdag" [level=2] [ref=e11]
+  - heading "Fredag" [level=2] [ref=e13]

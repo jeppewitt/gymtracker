@@ -1,0 +1,6 @@
+- generic [ref=e4]:
+  - heading "Vælg træningsdag" [level=1] [ref=e5]
+  - button "Mandag" [ref=e6] [cursor=pointer]
+  - button "Onsdag" [ref=e7] [cursor=pointer]
+  - button "Fredag" [ref=e8] [cursor=pointer]
+  - button "Historik" [ref=e9] [cursor=pointer]

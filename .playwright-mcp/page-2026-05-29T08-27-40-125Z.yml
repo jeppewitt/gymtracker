@@ -1,0 +1,12 @@
+- generic [ref=e5]:
+  - generic [ref=e6]:
+    - button "Afbryd" [ref=e7] [cursor=pointer]
+    - generic [ref=e8]: 2 / 7
+  - generic [ref=e16]:
+    - generic [ref=e17]:
+      - paragraph [ref=e18]: Compound
+      - heading "Smith incline bench" [level=1] [ref=e19]
+    - generic [ref=e24]:
+      - paragraph [ref=e25]: Foreslået vægt
+      - paragraph [ref=e26]: 40 kg
+      - button "Warmup færdig" [ref=e27] [cursor=pointer]

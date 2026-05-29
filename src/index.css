@@ -9,7 +9,14 @@ body,
 }
 
 body {
-  @apply bg-bg text-gray-100;
+  @apply bg-[#f4f4f7] text-slate-900;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
+}
+
+/* Skjul number-spinners så talfelter er rene */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }

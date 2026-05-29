@@ -4,20 +4,26 @@ import {
   fetchExercisesForDay,
   fetchLastWorkSets,
   createWorkout,
-  insertSet,
+  insertManySets,
 } from "../data/queries";
 import { suggestWeight } from "../lib/progression";
-import PlyoCard from "../components/PlyoCard";
-import StrengthCard from "../components/StrengthCard";
+import ExerciseCard from "../components/ExerciseCard";
+import Button from "../components/Button";
+
+const DAY_LABELS = { mon: "Mandag", wed: "Onsdag", fri: "Fredag" };
+
+function parseNum(v) {
+  const n = Number(String(v).replace(",", "."));
+  return Number.isFinite(n) ? n : 0;
+}
 
 export default function Workout() {
   const { day } = useParams();
   const navigate = useNavigate();
   const [exercises, setExercises] = useState([]);
-  const [suggestions, setSuggestions] = useState({}); // exerciseId -> number|null
-  const [workoutId, setWorkoutId] = useState(null);
-  const [index, setIndex] = useState(0);
+  const [data, setData] = useState({}); // exerciseId -> { warmupWeight, sets:[{weight,reps}] }
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -29,14 +35,23 @@ export default function Workout() {
         const entries = await Promise.all(
           strength.map(async (e) => {
             const last = await fetchLastWorkSets(e.id);
-            return [e.id, suggestWeight(e, last)];
+            const s = suggestWeight(e, last);
+            const w = s != null ? String(s) : "";
+            return [
+              e.id,
+              {
+                warmupWeight: w,
+                sets: [
+                  { weight: w, reps: "8" },
+                  { weight: w, reps: "8" },
+                ],
+              },
+            ];
           })
         );
-        const workout = await createWorkout(day);
         if (cancelled) return;
         setExercises(list);
-        setSuggestions(Object.fromEntries(entries));
-        setWorkoutId(workout.id);
+        setData(Object.fromEntries(entries));
       } catch (e) {
         if (!cancelled) setError(e.message);
       } finally {
@@ -48,72 +63,82 @@ export default function Workout() {
     };
   }, [day]);
 
-  const advance = () => {
-    if (index + 1 >= exercises.length) {
+  const update = (exId, next) => setData((d) => ({ ...d, [exId]: next }));
+
+  const finish = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const workout = await createWorkout(day);
+      const rows = [];
+      for (const ex of exercises) {
+        if (ex.type === "plyo") continue;
+        const d = data[ex.id];
+        rows.push({
+          workout_id: workout.id,
+          exercise_id: ex.id,
+          set_number: 0,
+          is_warmup: true,
+          reps: null,
+          weight: parseNum(d.warmupWeight),
+        });
+        d.sets.forEach((s, i) => {
+          rows.push({
+            workout_id: workout.id,
+            exercise_id: ex.id,
+            set_number: i + 1,
+            is_warmup: false,
+            reps: parseInt(s.reps, 10) || 0,
+            weight: parseNum(s.weight),
+          });
+        });
+      }
+      await insertManySets(rows);
       navigate("/");
-    } else {
-      setIndex(index + 1);
-    }
-  };
-
-  const logWarmup = async (exerciseId, weight) => {
-    try {
-      await insertSet({
-        workoutId,
-        exerciseId,
-        setNumber: 0,
-        isWarmup: true,
-        reps: null,
-        weight,
-      });
     } catch (e) {
       setError(e.message);
-    }
-  };
-
-  const logWorkSet = async (exerciseId, setNumber, reps, weight) => {
-    try {
-      await insertSet({
-        workoutId,
-        exerciseId,
-        setNumber,
-        isWarmup: false,
-        reps,
-        weight,
-      });
-    } catch (e) {
-      setError(e.message);
+      setSaving(false);
     }
   };
 
   if (loading) return <Centered>Indlæser…</Centered>;
-  if (error) return <Centered>Fejl: {error}</Centered>;
-  if (exercises.length === 0) return <Centered>Ingen øvelser for dagen.</Centered>;
-
-  const ex = exercises[index];
-  const progress = `${index + 1} / ${exercises.length}`;
+  if (error && exercises.length === 0) return <Centered>Fejl: {error}</Centered>;
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="flex items-center justify-between px-6 py-4 text-gray-400">
-        <button onClick={() => navigate("/")}>Afbryd</button>
-        <span>{progress}</span>
+    <div className="min-h-full pb-12 max-w-md mx-auto">
+      <div className="sticky top-0 z-10 bg-[#f4f4f7]/90 backdrop-blur px-5 pt-6 pb-4 flex items-center justify-between gap-3">
+        <h1 className="text-3xl font-extrabold bg-gradient-to-r from-indigo-500 to-violet-500 bg-clip-text text-transparent">
+          {DAY_LABELS[day] ?? "Workout"}
+        </h1>
+        <div className="flex gap-2 shrink-0">
+          <Button
+            variant="outline"
+            className="!w-auto px-4 !min-h-[48px] !text-base"
+            onClick={() => navigate("/")}
+          >
+            ✕ Annuller
+          </Button>
+          <Button
+            className="!w-auto px-5 !min-h-[48px] !text-base"
+            onClick={finish}
+            disabled={saving}
+          >
+            ✓ {saving ? "Gemmer…" : "Afslut"}
+          </Button>
+        </div>
       </div>
-      <div className="flex-1">
-        {ex.type === "plyo" ? (
-          <PlyoCard exercise={ex} onDone={advance} />
-        ) : (
-          <StrengthCard
+
+      {error && <p className="text-red-500 px-5 mb-3">Fejl: {error}</p>}
+
+      <div className="px-5 flex flex-col gap-5">
+        {exercises.map((ex) => (
+          <ExerciseCard
             key={ex.id}
             exercise={ex}
-            suggestedWeight={suggestions[ex.id] ?? null}
-            onWarmup={(weight) => logWarmup(ex.id, weight)}
-            onWorkSet={(setNumber, reps, weight) =>
-              logWorkSet(ex.id, setNumber, reps, weight)
-            }
-            onComplete={advance}
+            value={data[ex.id]}
+            onChange={(next) => update(ex.id, next)}
           />
-        )}
+        ))}
       </div>
     </div>
   );
@@ -121,7 +146,7 @@ export default function Workout() {
 
 function Centered({ children }) {
   return (
-    <div className="h-full flex items-center justify-center text-gray-300 text-lg px-6 text-center">
+    <div className="h-full flex items-center justify-center text-slate-500 text-lg px-6 text-center">
       {children}
     </div>
   );

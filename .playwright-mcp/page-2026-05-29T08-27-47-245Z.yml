@@ -1,0 +1,15 @@
+- generic [ref=e5]:
+  - generic [ref=e6]:
+    - button "Afbryd" [ref=e7] [cursor=pointer]
+    - generic [ref=e8]: 2 / 7
+  - generic [ref=e16]:
+    - generic [ref=e17]:
+      - paragraph [ref=e18]: Compound
+      - heading "Smith incline bench" [level=1] [ref=e19]
+    - generic [ref=e28]:
+      - paragraph [ref=e29]: Arbejdssæt 1 · 40 kg · reps til failure
+      - generic [ref=e30]:
+        - button "−" [ref=e31] [cursor=pointer]
+        - textbox [ref=e32]: "8"
+        - button "+" [ref=e33] [cursor=pointer]
+      - button "Gem sæt 1" [ref=e34] [cursor=pointer]

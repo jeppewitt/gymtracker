@@ -1,0 +1,23 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e33]:
+    - generic [ref=e34]:
+      - button "← Tilbage" [ref=e35] [cursor=pointer]
+      - heading "Smith incline bench" [level=1] [ref=e36]
+    - generic [ref=e39]:
+      - img [ref=e40]:
+        - generic [ref=e47]: "29.05"
+        - generic [ref=e49]:
+          - generic [ref=e51]: "0"
+          - generic [ref=e53]: "10"
+          - generic [ref=e55]: "20"
+          - generic [ref=e57]: "30"
+          - generic [ref=e59]: "40"
+      - generic:
+        - generic:
+          - paragraph: "29.05"
+          - list:
+            - listitem: "weight : 40 kg"
+    - generic [ref=e66]:
+      - generic [ref=e67]: 29.5.2026
+      - generic [ref=e68]: 40 kg · 8 / 8 reps
+  - generic [ref=e69]: "0"

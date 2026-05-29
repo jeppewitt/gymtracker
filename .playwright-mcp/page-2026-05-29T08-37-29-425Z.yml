@@ -1,0 +1,20 @@
+- generic [ref=e161]:
+  - paragraph [ref=e162]: Lad os træne
+  - heading "Vælg dag" [level=1] [ref=e163]
+  - generic [ref=e164]:
+    - button "Mandag Bænk · squat · ro →" [ref=e165] [cursor=pointer]:
+      - generic [ref=e166]:
+        - paragraph [ref=e167]: Mandag
+        - paragraph [ref=e168]: Bænk · squat · ro
+      - generic [ref=e169]: →
+    - button "Onsdag Bænk · markløft · pull-ups →" [ref=e170] [cursor=pointer]:
+      - generic [ref=e171]:
+        - paragraph [ref=e172]: Onsdag
+        - paragraph [ref=e173]: Bænk · markløft · pull-ups
+      - generic [ref=e174]: →
+    - button "Fredag Press · ro · hip thrust →" [ref=e175] [cursor=pointer]:
+      - generic [ref=e176]:
+        - paragraph [ref=e177]: Fredag
+        - paragraph [ref=e178]: Press · ro · hip thrust
+      - generic [ref=e179]: →
+  - button "Se historik →" [ref=e180] [cursor=pointer]

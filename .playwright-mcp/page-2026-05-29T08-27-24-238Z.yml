@@ -1,0 +1,12 @@
+- generic [ref=e5]:
+  - generic [ref=e6]:
+    - button "Afbryd" [ref=e7] [cursor=pointer]
+    - generic [ref=e8]: 2 / 7
+  - generic [ref=e16]:
+    - generic [ref=e17]:
+      - paragraph [ref=e18]: Compound
+      - heading "Smith incline bench" [level=1] [ref=e19]
+    - generic [ref=e20]:
+      - paragraph [ref=e21]: Indtast startvægt (kg)
+      - textbox "0" [ref=e22]
+      - button "Bekræft vægt" [ref=e23] [cursor=pointer]

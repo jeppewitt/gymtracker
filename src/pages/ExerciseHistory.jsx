@@ -31,35 +31,51 @@ export default function ExerciseHistory() {
   }, [exerciseId]);
 
   const chartData = history.map((h) => ({
-    date: new Date(h.date).toLocaleDateString("da-DK", { day: "2-digit", month: "2-digit" }),
+    date: new Date(h.date).toLocaleDateString("da-DK", {
+      day: "2-digit",
+      month: "2-digit",
+    }),
     weight: h.weight,
   }));
 
   return (
-    <div className="px-6 py-4 max-w-md mx-auto">
-      <div className="flex items-center gap-4 mb-6">
-        <button onClick={() => navigate("/history")} className="text-gray-400">
-          ← Tilbage
+    <div className="px-5 pt-12 pb-10 max-w-md mx-auto">
+      <div className="flex items-center gap-3 mb-8">
+        <button onClick={() => navigate("/history")} className="text-slate-400 text-lg">
+          ←
         </button>
-        <h1 className="text-2xl font-bold">{name}</h1>
+        <h1 className="text-2xl font-extrabold text-slate-900">{name}</h1>
       </div>
-      {error && <p className="text-red-400">Fejl: {error}</p>}
+      {error && <p className="text-red-500">Fejl: {error}</p>}
 
       {chartData.length === 0 ? (
-        <p className="text-gray-400">Ingen logget historik endnu.</p>
+        <p className="text-slate-400">Ingen logget historik endnu.</p>
       ) : (
         <>
-          <div className="h-56 mb-8 bg-surface rounded-2xl p-3">
+          <div className="h-56 mb-8 bg-white rounded-3xl border border-slate-200 shadow-sm p-3">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData}>
-                <CartesianGrid stroke="#2a2a2e" />
-                <XAxis dataKey="date" stroke="#888" fontSize={12} />
-                <YAxis stroke="#888" fontSize={12} width={32} />
+              <LineChart data={chartData} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+                <CartesianGrid stroke="#eef2f7" vertical={false} />
+                <XAxis dataKey="date" stroke="#94a3b8" fontSize={12} tickLine={false} />
+                <YAxis stroke="#94a3b8" fontSize={12} width={32} tickLine={false} axisLine={false} />
                 <Tooltip
-                  contentStyle={{ background: "#161618", border: "none", borderRadius: 8 }}
-                  formatter={(v) => formatKg(v)}
+                  contentStyle={{
+                    background: "#fff",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: 12,
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
+                  }}
+                  labelStyle={{ color: "#64748b" }}
+                  formatter={(v) => [formatKg(v), "vægt"]}
                 />
-                <Line type="monotone" dataKey="weight" stroke="#22c55e" strokeWidth={2} dot />
+                <Line
+                  type="monotone"
+                  dataKey="weight"
+                  stroke="#7c3aed"
+                  strokeWidth={3}
+                  dot={{ r: 4, fill: "#7c3aed" }}
+                  activeDot={{ r: 6 }}
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -68,12 +84,12 @@ export default function ExerciseHistory() {
             {[...history].reverse().map((h) => (
               <div
                 key={h.workoutId}
-                className="bg-surface rounded-xl px-4 py-3 flex justify-between"
+                className="bg-white rounded-2xl border border-slate-200 shadow-sm px-5 py-3.5 flex justify-between items-center"
               >
-                <span className="text-gray-300">
+                <span className="text-slate-500">
                   {new Date(h.date).toLocaleDateString("da-DK")}
                 </span>
-                <span>
+                <span className="font-semibold text-slate-800">
                   {formatKg(h.weight)} · {h.sets.map((s) => s.reps).join(" / ")} reps
                 </span>
               </div>

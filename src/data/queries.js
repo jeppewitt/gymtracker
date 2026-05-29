@@ -30,22 +30,11 @@ export async function createWorkout(day) {
   return data;
 }
 
-export async function insertSet({
-  workoutId,
-  exerciseId,
-  setNumber,
-  isWarmup,
-  reps,
-  weight,
-}) {
-  const { error } = await supabase.from("sets").insert({
-    workout_id: workoutId,
-    exercise_id: exerciseId,
-    set_number: setNumber,
-    is_warmup: isWarmup,
-    reps,
-    weight,
-  });
+// rows: array of already snake_cased set objects
+// ({ workout_id, exercise_id, set_number, is_warmup, reps, weight }).
+export async function insertManySets(rows) {
+  if (rows.length === 0) return;
+  const { error } = await supabase.from("sets").insert(rows);
   if (error) throw error;
 }
 
