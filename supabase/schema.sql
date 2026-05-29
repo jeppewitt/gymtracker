@@ -33,10 +33,23 @@ create index if not exists idx_sets_workout  on sets(workout_id);
 create index if not exists idx_sets_exercise on sets(exercise_id);
 create index if not exists idx_workouts_day   on workouts(day);
 
--- RLS slået fra (single-user). Tabellerne er åbne for anon-nøglen.
-alter table exercises disable row level security;
-alter table workouts  disable row level security;
-alter table sets      disable row level security;
+-- RLS: single-user app uden auth. Vi slår RLS TIL og laver åbne policies, så
+-- anon-nøglen kan læse/skrive alt. (Mere robust end at disable RLS, som kan
+-- håndhæves alligevel for anon via PostgREST.)
+alter table exercises enable row level security;
+alter table workouts  enable row level security;
+alter table sets      enable row level security;
+
+drop policy if exists "anon all exercises" on exercises;
+drop policy if exists "anon all workouts"  on workouts;
+drop policy if exists "anon all sets"       on sets;
+
+create policy "anon all exercises" on exercises for all
+  to anon, authenticated using (true) with check (true);
+create policy "anon all workouts" on workouts for all
+  to anon, authenticated using (true) with check (true);
+create policy "anon all sets" on sets for all
+  to anon, authenticated using (true) with check (true);
 
 -- ---------- Seed: øvelser ----------
 -- Idempotent: tømmer kun hvis tom, så seed ikke duplikeres ved gentagne kørsler.
