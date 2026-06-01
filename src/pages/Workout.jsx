@@ -56,8 +56,8 @@ export default function Workout() {
               {
                 warmupWeight: wuStr,
                 sets: [
-                  { weight: w, reps: "8" },
-                  { weight: w, reps: "8" },
+                  { weight: w, reps: "" },
+                  { weight: w, reps: "" },
                 ],
               },
             ];
