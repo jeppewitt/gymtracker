@@ -134,6 +134,7 @@ export default function Workout() {
         workoutCount
       );
 
+      setSaving(false);
       setSummary({ newAchievements });
     } catch (e) {
       setError(e.message);
