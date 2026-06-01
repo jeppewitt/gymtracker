@@ -21,7 +21,11 @@ export function loadAchievements() {
 }
 
 export function saveAchievements(state) {
-  localStorage.setItem(KEY, JSON.stringify(state));
+  try {
+    localStorage.setItem(KEY, JSON.stringify(state));
+  } catch {
+    // localStorage fuld eller utilgængelig — ignorér stille
+  }
 }
 
 // sessionData: {
@@ -51,12 +55,18 @@ export function checkAchievements(sessionData, workoutCount) {
     unlock("first_progress");
     for (const { exerciseId } of sessionData.progressed) {
       state.progressStreaks[exerciseId] = (state.progressStreaks[exerciseId] || 0) + 1;
+      // Cap streak ved 3
+      if (state.progressStreaks[exerciseId] > 3) {
+        state.progressStreaks[exerciseId] = 3;
+      }
       if (state.progressStreaks[exerciseId] >= 3) unlock("progress_streak_3");
     }
   }
 
   for (const exerciseId of sessionData.notProgressed) {
-    state.progressStreaks[exerciseId] = 0;
+    if (!sessionData.progressed.some((p) => p.exerciseId === exerciseId)) {
+      state.progressStreaks[exerciseId] = 0;
+    }
   }
 
   if (sessionData.maxWeight >= 50) unlock("weight_50");
