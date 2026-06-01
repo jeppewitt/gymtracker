@@ -34,8 +34,15 @@ export default function Home() {
       </div>
 
       <button
+        onClick={() => navigate("/workouts")}
+        className="mt-6 text-indigo-500 font-semibold py-3"
+      >
+        Gennemførte træninger →
+      </button>
+
+      <button
         onClick={() => navigate("/history")}
-        className="mt-8 text-indigo-500 font-semibold py-3"
+        className="mt-2 text-indigo-500 font-semibold py-3"
       >
         Se historik →
       </button>
