@@ -5,9 +5,12 @@ import {
   fetchLastWorkSets,
   createWorkout,
   insertManySets,
+  fetchWorkoutCount,
 } from "../data/queries";
-import { suggestWeight, warmupWeight } from "../lib/progression";
+import { suggestWeight, warmupWeight, incrementFor } from "../lib/progression";
+import { checkAchievements } from "../lib/achievements";
 import ExerciseCard from "../components/ExerciseCard";
+import WorkoutSummaryModal from "../components/WorkoutSummaryModal";
 import Button from "../components/Button";
 
 const DAY_LABELS = { mon: "Mandag", wed: "Onsdag", fri: "Fredag" };
@@ -21,10 +24,13 @@ export default function Workout() {
   const { day } = useParams();
   const navigate = useNavigate();
   const [exercises, setExercises] = useState([]);
-  const [data, setData] = useState({}); // exerciseId -> { warmupWeight, sets:[{weight,reps}] }
+  const [data, setData] = useState({});
+  const [lastWeights, setLastWeights] = useState({});   // exerciseId -> number
+  const [progressedByMap, setProgressedByMap] = useState({}); // exerciseId -> number|null
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [summary, setSummary] = useState(null); // null | { newAchievements }
 
   useEffect(() => {
     let cancelled = false;
@@ -32,10 +38,16 @@ export default function Workout() {
       try {
         const list = await fetchExercisesForDay(day);
         const strength = list.filter((e) => e.type !== "plyo");
+        const lastWeightsAcc = {};
+        const progressedAcc = {};
         const entries = await Promise.all(
           strength.map(async (e) => {
             const last = await fetchLastWorkSets(e.id);
             const s = suggestWeight(e, last);
+            const base = last.length > 0 ? last[0].weight : null;
+            lastWeightsAcc[e.id] = base ?? 0;
+            progressedAcc[e.id] =
+              s != null && base != null && s > base ? incrementFor(e) : null;
             const w = s != null ? String(s).replace(".", ",") : "";
             const wu = warmupWeight(s);
             const wuStr = wu != null ? String(wu).replace(".", ",") : "";
@@ -54,6 +66,8 @@ export default function Workout() {
         if (cancelled) return;
         setExercises(list);
         setData(Object.fromEntries(entries));
+        setLastWeights(lastWeightsAcc);
+        setProgressedByMap(progressedAcc);
       } catch (e) {
         if (!cancelled) setError(e.message);
       } finally {
@@ -96,7 +110,31 @@ export default function Workout() {
         });
       }
       await insertManySets(rows);
-      navigate("/");
+
+      // Achievement-tjek
+      const strengthExs = exercises.filter((e) => e.type !== "plyo");
+      const progressed = [];
+      const notProgressed = [];
+      let maxWeight = 0;
+      for (const ex of strengthExs) {
+        const d = data[ex.id];
+        const loggedMax = d && d.sets.length > 0
+          ? Math.max(...d.sets.map((s) => parseNum(s.weight)))
+          : 0;
+        maxWeight = Math.max(maxWeight, loggedMax);
+        if (loggedMax > (lastWeights[ex.id] ?? 0)) {
+          progressed.push({ exerciseId: ex.id });
+        } else {
+          notProgressed.push(ex.id);
+        }
+      }
+      const workoutCount = await fetchWorkoutCount();
+      const newAchievements = checkAchievements(
+        { progressed, notProgressed, maxWeight },
+        workoutCount
+      );
+
+      setSummary({ newAchievements });
     } catch (e) {
       setError(e.message);
       setSaving(false);
@@ -139,9 +177,20 @@ export default function Workout() {
             exercise={ex}
             value={data[ex.id]}
             onChange={(next) => update(ex.id, next)}
+            progressedBy={progressedByMap[ex.id] ?? null}
           />
         ))}
       </div>
+
+      {summary && (
+        <WorkoutSummaryModal
+          exercises={exercises}
+          data={data}
+          lastWeights={lastWeights}
+          newAchievements={summary.newAchievements}
+          onClose={() => navigate("/")}
+        />
+      )}
     </div>
   );
 }
