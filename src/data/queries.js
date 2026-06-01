@@ -87,3 +87,12 @@ export async function fetchExerciseHistory(exerciseId) {
     sets: e.sets.sort((a, b) => a.setNumber - b.setNumber),
   }));
 }
+
+// Returnerer det totale antal workouts i databasen.
+export async function fetchWorkoutCount() {
+  const { count, error } = await supabase
+    .from("workouts")
+    .select("*", { count: "exact", head: true });
+  if (error) throw error;
+  return count ?? 0;
+}
