@@ -24,7 +24,7 @@ export default function WorkoutSummaryModal({
 
   const rows = strengthExercises.map((ex) => {
     const d = data[ex.id];
-    const loggedWeight = d
+    const loggedWeight = d && d.sets.length > 0
       ? Math.max(...d.sets.map((s) => parseW(s.weight)))
       : 0;
     const prevWeight = lastWeights[ex.id] ?? null;
@@ -38,7 +38,7 @@ export default function WorkoutSummaryModal({
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm px-4 pb-8">
       <div
-        className={`w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 transition-all duration-400 ${
+        className={`w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 transition-all duration-300 ${
           visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
         }`}
       >
