@@ -88,6 +88,72 @@ export async function fetchExerciseHistory(exerciseId) {
   }));
 }
 
+// Returnerer alle workouts, nyeste først.
+export async function fetchAllWorkouts() {
+  const { data, error } = await supabase
+    .from("workouts")
+    .select("id, day, created_at")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+// Returnerer et enkelt workout (id, day, created_at).
+export async function fetchWorkoutById(workoutId) {
+  const { data, error } = await supabase
+    .from("workouts")
+    .select("id, day, created_at")
+    .eq("id", workoutId)
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+// Returnerer alle arbejdssæt for et workout grupperet per øvelse.
+// Resultat: { exercises: [...], sets: { [exerciseId]: [{ id, setNumber, reps, weight }] } }
+export async function fetchWorkoutSets(workoutId) {
+  const { data, error } = await supabase
+    .from("sets")
+    .select("id, set_number, reps, weight, exercise_id, exercises(id, name, type, day, order_index)")
+    .eq("workout_id", workoutId)
+    .eq("is_warmup", false)
+    .order("exercise_id", { ascending: true })
+    .order("set_number", { ascending: true });
+  if (error) throw error;
+
+  const exerciseMap = new Map();
+  const setsMap = {};
+
+  for (const row of data) {
+    const ex = row.exercises;
+    if (!exerciseMap.has(ex.id)) {
+      exerciseMap.set(ex.id, ex);
+      setsMap[ex.id] = [];
+    }
+    setsMap[ex.id].push({
+      id: row.id,
+      setNumber: row.set_number,
+      reps: row.reps,
+      weight: Number(row.weight),
+    });
+  }
+
+  const exercises = Array.from(exerciseMap.values()).sort(
+    (a, b) => a.order_index - b.order_index
+  );
+
+  return { exercises, sets: setsMap };
+}
+
+// Opdaterer reps og weight på ét sæt.
+export async function updateSet(setId, { reps, weight }) {
+  const { error } = await supabase
+    .from("sets")
+    .update({ reps, weight })
+    .eq("id", setId);
+  if (error) throw error;
+}
+
 // Returnerer det totale antal workouts i databasen.
 export async function fetchWorkoutCount() {
   const { count, error } = await supabase
