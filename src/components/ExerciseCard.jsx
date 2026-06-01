@@ -1,3 +1,4 @@
+import { incrementFor } from "../lib/progression";
 import SetRow from "./SetRow";
 
 const TYPE_LABEL = { compound: "Compound", isolation: "Isolation", plyo: "Plyo" };
@@ -7,27 +8,55 @@ const TYPE_STYLE = {
   plyo: "bg-amber-50 text-amber-600",
 };
 
-// value shape (strength only):
-//   { warmupWeight: string, sets: [{ weight: string, reps: string }, ...] }
-export default function ExerciseCard({ exercise, value, onChange }) {
+function parseW(str) {
+  return parseFloat(String(str).replace(",", ".")) || 0;
+}
+
+// progressedBy: number | null — hvis > 0 vises et "↑ +Xkg"-badge
+export default function ExerciseCard({ exercise, value, onChange, progressedBy }) {
   const isPlyo = exercise.type === "plyo";
 
   const setWarmup = (w) => onChange({ ...value, warmupWeight: w });
-  const setSetField = (i, field, v) =>
-    onChange({
-      ...value,
-      sets: value.sets.map((s, j) => (j === i ? { ...s, [field]: v } : s)),
-    });
+
+  const setSetField = (i, field, v) => {
+    let nextSets = value.sets.map((s, j) => (j === i ? { ...s, [field]: v } : s));
+
+    // Real-time adaptation: reps sæt 0 >= 8 → bump sæt 1 vægt
+    if (
+      i === 0 &&
+      field === "reps" &&
+      parseInt(v, 10) >= 8 &&
+      nextSets.length >= 2
+    ) {
+      const w0 = parseW(nextSets[0].weight);
+      const w1 = parseW(nextSets[1].weight);
+      if (w0 === w1 && w0 > 0) {
+        const bumped = w0 + incrementFor(exercise);
+        nextSets = nextSets.map((s, j) =>
+          j === 1 ? { ...s, weight: String(bumped).replace(".", ",") } : s
+        );
+      }
+    }
+
+    onChange({ ...value, sets: nextSets });
+  };
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-5">
       <div className="flex items-center justify-between gap-3 mb-4">
         <h2 className="text-xl font-bold text-slate-900">{exercise.name}</h2>
-        <span
-          className={`text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${TYPE_STYLE[exercise.type]}`}
-        >
-          {TYPE_LABEL[exercise.type]}
-        </span>
+        <div className="flex items-center gap-2 shrink-0">
+          {progressedBy != null && progressedBy > 0 && (
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600">
+              ↑ +{progressedBy} kg
+            </span>
+          )}
+          <span
+            className={`text-xs font-semibold px-2.5 py-1 rounded-full ${TYPE_STYLE[exercise.type]}`}
+          >
+            {TYPE_LABEL[exercise.type]}
+          </span>
+        </div>
       </div>
 
       {isPlyo ? (
