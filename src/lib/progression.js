@@ -1,7 +1,10 @@
 // Pure progression rules. No I/O.
 
+const DUMBBELL_EXERCISES = ["Lateral raises"];
+
 export function incrementFor(exercise) {
   if (exercise.name === "Pull-ups") return 1.25;
+  if (exercise.name.includes("DB") || DUMBBELL_EXERCISES.includes(exercise.name)) return 2;
   return exercise.type === "compound" ? 2.5 : 1.25;
 }
 

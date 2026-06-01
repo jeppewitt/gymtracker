@@ -11,6 +11,13 @@ describe("incrementFor", () => {
   it("pull-ups are 1.25 even though compound", () => {
     expect(incrementFor({ type: "compound", name: "Pull-ups" })).toBe(1.25);
   });
+  it("DB exercises are 2", () => {
+    expect(incrementFor({ type: "compound", name: "DB bench press" })).toBe(2);
+    expect(incrementFor({ type: "isolation", name: "Incline DB curls" })).toBe(2);
+  });
+  it("Lateral raises are 2", () => {
+    expect(incrementFor({ type: "isolation", name: "Lateral raises" })).toBe(2);
+  });
 });
 
 describe("suggestWeight", () => {
