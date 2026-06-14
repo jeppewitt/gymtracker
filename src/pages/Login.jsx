@@ -80,10 +80,10 @@ export default function Login() {
             autoFocus
             inputMode="numeric"
             autoComplete="one-time-code"
-            maxLength={6}
+            maxLength={10}
             value={code}
             onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-            placeholder="123456"
+            placeholder="Indtast koden"
             className="bg-white rounded-2xl border border-slate-200 shadow-sm px-5 py-4 text-2xl tracking-[0.4em] text-center text-slate-900 outline-none focus:border-indigo-400"
           />
           <button
