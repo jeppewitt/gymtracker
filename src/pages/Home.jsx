@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { supabase } from "../lib/supabase";
 
 const DAYS = [
   { key: "mon", label: "Mandag", sub: "Bænk · squat · ro" },
@@ -45,6 +46,13 @@ export default function Home() {
         className="mt-2 text-indigo-500 font-semibold py-3"
       >
         Se historik →
+      </button>
+
+      <button
+        onClick={() => supabase.auth.signOut()}
+        className="mt-8 text-slate-400 font-medium py-3"
+      >
+        Log ud
       </button>
     </div>
   );

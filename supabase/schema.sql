@@ -1,6 +1,6 @@
--- Gymtracker schema + seed
--- Kør hele scriptet i Supabase SQL Editor.
--- Single-user app: RLS slået fra med vilje.
+-- Gymtracker schema + seed (multi-bruger).
+-- Kør hele scriptet i Supabase SQL Editor på en FRISK database.
+-- For at migrere en eksisterende single-user-database: se multiuser.sql.
 
 -- ---------- Tabeller ----------
 
@@ -14,12 +14,14 @@ create table if not exists exercises (
 
 create table if not exists workouts (
   id         bigint generated always as identity primary key,
+  user_id    uuid not null default auth.uid() references auth.users(id) on delete cascade,
   day        text not null check (day in ('mon', 'wed', 'fri')),
   created_at timestamptz not null default now()
 );
 
 create table if not exists sets (
   id          bigint generated always as identity primary key,
+  user_id     uuid not null default auth.uid() references auth.users(id) on delete cascade,
   workout_id  bigint not null references workouts(id) on delete cascade,
   exercise_id bigint not null references exercises(id) on delete cascade,
   set_number  int not null,            -- 0 = warmup, 1/2 = arbejdssæt
@@ -32,10 +34,11 @@ create table if not exists sets (
 create index if not exists idx_sets_workout  on sets(workout_id);
 create index if not exists idx_sets_exercise on sets(exercise_id);
 create index if not exists idx_workouts_day   on workouts(day);
+create index if not exists idx_workouts_user  on workouts(user_id);
+create index if not exists idx_sets_user      on sets(user_id);
 
--- RLS: single-user app uden auth. Vi slår RLS TIL og laver åbne policies, så
--- anon-nøglen kan læse/skrive alt. (Mere robust end at disable RLS, som kan
--- håndhæves alligevel for anon via PostgREST.)
+-- RLS: multi-bruger. Hver bruger ser kun sine egne workouts/sets.
+-- exercises er fælles rutine og kun læsbar for indloggede brugere.
 alter table exercises enable row level security;
 alter table workouts  enable row level security;
 alter table sets      enable row level security;
@@ -43,13 +46,16 @@ alter table sets      enable row level security;
 drop policy if exists "anon all exercises" on exercises;
 drop policy if exists "anon all workouts"  on workouts;
 drop policy if exists "anon all sets"       on sets;
+drop policy if exists "read exercises"      on exercises;
+drop policy if exists "own workouts"        on workouts;
+drop policy if exists "own sets"            on sets;
 
-create policy "anon all exercises" on exercises for all
-  to anon, authenticated using (true) with check (true);
-create policy "anon all workouts" on workouts for all
-  to anon, authenticated using (true) with check (true);
-create policy "anon all sets" on sets for all
-  to anon, authenticated using (true) with check (true);
+create policy "read exercises" on exercises for select
+  to authenticated using (true);
+create policy "own workouts" on workouts for all
+  to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy "own sets" on sets for all
+  to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
 
 -- ---------- Seed: øvelser ----------
 -- Idempotent: tømmer kun hvis tom, så seed ikke duplikeres ved gentagne kørsler.
