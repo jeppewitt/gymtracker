@@ -116,12 +116,17 @@ export default function Workout() {
       const progressed = [];
       const notProgressed = [];
       let maxWeight = 0;
+      let volume = 0;
       for (const ex of strengthExs) {
         const d = data[ex.id];
         const loggedMax = d && d.sets.length > 0
           ? Math.max(...d.sets.map((s) => parseNum(s.weight)))
           : 0;
         maxWeight = Math.max(maxWeight, loggedMax);
+        // Volumen = reps × vægt, kun arbejdssæt (opvarmning tæller ikke med).
+        for (const s of d?.sets ?? []) {
+          volume += (parseInt(s.reps, 10) || 0) * parseNum(s.weight);
+        }
         if (loggedMax > (lastWeights[ex.id] ?? 0)) {
           progressed.push({ exerciseId: ex.id });
         } else {
@@ -130,7 +135,7 @@ export default function Workout() {
       }
       const workoutCount = await fetchWorkoutCount();
       const newAchievements = checkAchievements(
-        { progressed, notProgressed, maxWeight },
+        { progressed, notProgressed, maxWeight, volume, day, date: new Date() },
         workoutCount
       );
 
