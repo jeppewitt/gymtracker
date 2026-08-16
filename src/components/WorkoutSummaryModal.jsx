@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Button from "./Button";
+import AchievementBadge from "./AchievementBadge";
 
 function parseW(str) {
   return parseFloat(String(str ?? "0").replace(",", ".")) || 0;
@@ -61,7 +62,10 @@ export default function WorkoutSummaryModal({
                     transform: visible ? "translateY(0)" : "translateY(8px)",
                   }}
                 >
-                  <span className="text-xl">🏅</span>
+                  <AchievementBadge
+                    achievement={{ ...a, unlockedAt: new Date().toISOString() }}
+                    size="sm"
+                  />
                   <div>
                     <p className="font-bold text-amber-800 text-sm">{a.title}</p>
                     <p className="text-amber-600 text-xs">{a.description}</p>
