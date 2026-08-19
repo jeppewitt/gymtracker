@@ -45,7 +45,7 @@ export function loadDraft(day, now = Date.now()) {
 }
 
 export function saveDraft(
-  { day, exercises, data, lastWeights, progressedBy },
+  { day, exercises, data, selection, lastWeights, progressedBy },
   now = Date.now()
 ) {
   try {
@@ -55,6 +55,7 @@ export function saveDraft(
         day,
         exercises,
         data,
+        selection: selection ?? {},
         lastWeights: lastWeights ?? {},
         progressedBy: progressedBy ?? {},
         updatedAt: now,

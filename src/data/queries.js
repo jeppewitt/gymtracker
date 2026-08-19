@@ -1,11 +1,14 @@
 import { supabase } from "../lib/supabase";
 
+// Alle øvelser for en dag — både hovedøvelser og de varianter man kan bytte
+// dem ud med (alternative_for peger på hovedøvelsen).
 export async function fetchExercisesForDay(day) {
   const { data, error } = await supabase
     .from("exercises")
     .select("*")
     .eq("day", day)
-    .order("order_index", { ascending: true });
+    .order("order_index", { ascending: true })
+    .order("id", { ascending: true });
   if (error) throw error;
   return data;
 }

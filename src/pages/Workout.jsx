@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   fetchExercisesForDay,
@@ -10,6 +10,7 @@ import {
 import { suggestWeight, warmupWeight, incrementFor } from "../lib/progression";
 import { checkAchievements } from "../lib/achievements";
 import { loadDraft, saveDraft, clearDraft } from "../lib/workoutDraft";
+import { groupVariants, resolveSelected } from "../lib/variants";
 import ExerciseCard from "../components/ExerciseCard";
 import WorkoutSummaryModal from "../components/WorkoutSummaryModal";
 import Button from "../components/Button";
@@ -32,13 +33,29 @@ export default function Workout() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [summary, setSummary] = useState(null); // null | { newAchievements }
+  const [selection, setSelection] = useState({}); // primaryId -> valgt exerciseId
   const [restored, setRestored] = useState(false); // kladde blev genskabt
   const [confirmCancel, setConfirmCancel] = useState(false);
 
   // Kladden skal kunne gemmes fra event-handlers uden for React-renderen
   // (fx når fanen lukkes), så vi holder den seneste state i en ref.
   const draftRef = useRef(null);
-  draftRef.current = { day, exercises, data, lastWeights, progressedBy: progressedByMap };
+  draftRef.current = {
+    day,
+    exercises,
+    data,
+    selection,
+    lastWeights,
+    progressedBy: progressedByMap,
+  };
+
+  // Rutinens øvelser med deres varianter, og hvilken variant der er valgt.
+  const groups = useMemo(
+    () => resolveSelected(groupVariants(exercises), selection),
+    [exercises, selection]
+  );
+  // De øvelser der rent faktisk bliver logget i dag.
+  const selectedExercises = useMemo(() => groups.map((g) => g.selected), [groups]);
 
   useEffect(() => {
     let cancelled = false;
@@ -48,6 +65,7 @@ export default function Workout() {
     if (draft) {
       setExercises(draft.exercises);
       setData(draft.data);
+      setSelection(draft.selection ?? {});
       setLastWeights(draft.lastWeights ?? {});
       setProgressedByMap(draft.progressedBy ?? {});
       setLoading(false);
@@ -56,6 +74,8 @@ export default function Workout() {
     (async () => {
       try {
         const list = await fetchExercisesForDay(day);
+        // Forslag beregnes for alle varianter, ikke kun dem der er valgt nu —
+        // så koster det ikke et netværkskald midt i træningen at bytte øvelse.
         const strength = list.filter((e) => e.type !== "plyo");
         const lastWeightsAcc = {};
         const progressedAcc = {};
@@ -109,7 +129,7 @@ export default function Workout() {
     if (loading || summary || exercises.length === 0) return;
     const t = setTimeout(() => saveDraft(draftRef.current), 400);
     return () => clearTimeout(t);
-  }, [data, exercises, loading, summary]);
+  }, [data, exercises, selection, loading, summary]);
 
   // Når mobilen sender appen i baggrunden, kan fanen blive smidt ud uden
   // varsel — så skal det seneste også være gemt, ikke kun det debouncede.
@@ -131,6 +151,9 @@ export default function Workout() {
 
   const update = (exId, next) => setData((d) => ({ ...d, [exId]: next }));
 
+  const selectVariant = (primaryId, exerciseId) =>
+    setSelection((s) => ({ ...s, [primaryId]: exerciseId }));
+
   const cancel = () => {
     if (!confirmCancel) {
       setConfirmCancel(true);
@@ -146,7 +169,7 @@ export default function Workout() {
     try {
       const workout = await createWorkout(day);
       const rows = [];
-      for (const ex of exercises) {
+      for (const ex of selectedExercises) {
         if (ex.type === "plyo") continue;
         const d = data[ex.id];
         rows.push({
@@ -173,7 +196,7 @@ export default function Workout() {
       clearDraft();
 
       // Achievement-tjek
-      const strengthExs = exercises.filter((e) => e.type !== "plyo");
+      const strengthExs = selectedExercises.filter((e) => e.type !== "plyo");
       const progressed = [];
       const notProgressed = [];
       let maxWeight = 0;
@@ -244,20 +267,22 @@ export default function Workout() {
       {error && <p className="text-red-500 px-5 mb-3">Fejl: {error}</p>}
 
       <div className="px-5 flex flex-col gap-5">
-        {exercises.map((ex) => (
+        {groups.map(({ primary, variants, selected }) => (
           <ExerciseCard
-            key={ex.id}
-            exercise={ex}
-            value={data[ex.id]}
-            onChange={(next) => update(ex.id, next)}
-            progressedBy={progressedByMap[ex.id] ?? null}
+            key={primary.id}
+            exercise={selected}
+            variants={variants}
+            onSelectVariant={(id) => selectVariant(primary.id, id)}
+            value={data[selected.id]}
+            onChange={(next) => update(selected.id, next)}
+            progressedBy={progressedByMap[selected.id] ?? null}
           />
         ))}
       </div>
 
       {summary && (
         <WorkoutSummaryModal
-          exercises={exercises}
+          exercises={selectedExercises}
           data={data}
           lastWeights={lastWeights}
           newAchievements={summary.newAchievements}

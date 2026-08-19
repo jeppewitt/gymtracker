@@ -9,8 +9,15 @@ create table if not exists exercises (
   name        text not null,
   type        text not null check (type in ('compound', 'isolation', 'plyo')),
   day         text not null check (day in ('mon', 'wed', 'fri')),
-  order_index int  not null
+  order_index int  not null,
+  -- null = hovedøvelse i rutinen. Sat = variant der kan byttes ind i stedet
+  -- for hovedøvelsen (fx konventionelt dødløft i stedet for romanian
+  -- deadlift). Varianten har sin egen historik og sit eget vægtforslag.
+  alternative_for bigint references exercises(id) on delete cascade
+    constraint exercises_alt_one_level check (alternative_for is null or alternative_for <> id)
 );
+
+create index if not exists idx_exercises_alternative_for on exercises(alternative_for);
 
 create table if not exists workouts (
   id         bigint generated always as identity primary key,
@@ -90,3 +97,17 @@ select * from (values
   ('Reverse cable flyes',      'isolation', 'fri', 7)
 ) as v(name, type, day, order_index)
 where not exists (select 1 from exercises);
+
+-- ---------- Varianter ----------
+-- Øvelser der byttes ud fra gang til gang. De har deres egen historik og eget
+-- vægtforslag, men arver dag og placering fra hovedøvelsen.
+
+insert into exercises (name, type, day, order_index, alternative_for)
+select 'Deadlift', 'compound', p.day, p.order_index, p.id
+from exercises p
+where p.name = 'Romanian deadlift'
+  and p.alternative_for is null
+  and not exists (
+    select 1 from exercises a
+    where a.alternative_for = p.id and a.name = 'Deadlift'
+  );
