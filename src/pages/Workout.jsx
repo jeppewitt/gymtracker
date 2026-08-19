@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   fetchExercisesForDay,
@@ -9,6 +9,7 @@ import {
 } from "../data/queries";
 import { suggestWeight, warmupWeight, incrementFor } from "../lib/progression";
 import { checkAchievements } from "../lib/achievements";
+import { loadDraft, saveDraft, clearDraft } from "../lib/workoutDraft";
 import ExerciseCard from "../components/ExerciseCard";
 import WorkoutSummaryModal from "../components/WorkoutSummaryModal";
 import Button from "../components/Button";
@@ -31,9 +32,27 @@ export default function Workout() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [summary, setSummary] = useState(null); // null | { newAchievements }
+  const [restored, setRestored] = useState(false); // kladde blev genskabt
+  const [confirmCancel, setConfirmCancel] = useState(false);
+
+  // Kladden skal kunne gemmes fra event-handlers uden for React-renderen
+  // (fx når fanen lukkes), så vi holder den seneste state i en ref.
+  const draftRef = useRef(null);
+  draftRef.current = { day, exercises, data, lastWeights, progressedBy: progressedByMap };
 
   useEffect(() => {
     let cancelled = false;
+    // Har vi en kladde fra en afbrudt træning, viser vi den med det samme —
+    // uden at vente på netværket, som måske slet ikke svarer i kælderen.
+    const draft = loadDraft(day);
+    if (draft) {
+      setExercises(draft.exercises);
+      setData(draft.data);
+      setLastWeights(draft.lastWeights ?? {});
+      setProgressedByMap(draft.progressedBy ?? {});
+      setLoading(false);
+      setRestored(true);
+    }
     (async () => {
       try {
         const list = await fetchExercisesForDay(day);
@@ -65,11 +84,16 @@ export default function Workout() {
         );
         if (cancelled) return;
         setExercises(list);
-        setData(Object.fromEntries(entries));
+        // Kladdens indtastninger vinder over de nyberegnede forslag; øvelser
+        // der er kommet til siden kladden blev gemt, får forslagene.
+        setData((prev) =>
+          draft ? { ...Object.fromEntries(entries), ...prev } : Object.fromEntries(entries)
+        );
         setLastWeights(lastWeightsAcc);
         setProgressedByMap(progressedAcc);
       } catch (e) {
-        if (!cancelled) setError(e.message);
+        // Fejler netværket, men har vi en kladde, kan træningen fortsætte.
+        if (!cancelled && !draft) setError(e.message);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -79,7 +103,42 @@ export default function Workout() {
     };
   }, [day]);
 
+  // Autogem kladden mens der tastes. Debounce, så vi ikke skriver til
+  // localStorage ved hvert tastetryk.
+  useEffect(() => {
+    if (loading || summary || exercises.length === 0) return;
+    const t = setTimeout(() => saveDraft(draftRef.current), 400);
+    return () => clearTimeout(t);
+  }, [data, exercises, loading, summary]);
+
+  // Når mobilen sender appen i baggrunden, kan fanen blive smidt ud uden
+  // varsel — så skal det seneste også være gemt, ikke kun det debouncede.
+  useEffect(() => {
+    if (loading || summary) return;
+    const flush = () => {
+      if (draftRef.current?.exercises?.length > 0) saveDraft(draftRef.current);
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", flush);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", flush);
+    };
+  }, [loading, summary]);
+
   const update = (exId, next) => setData((d) => ({ ...d, [exId]: next }));
+
+  const cancel = () => {
+    if (!confirmCancel) {
+      setConfirmCancel(true);
+      return;
+    }
+    clearDraft();
+    navigate("/");
+  };
 
   const finish = async () => {
     setSaving(true);
@@ -110,6 +169,8 @@ export default function Workout() {
         });
       }
       await insertManySets(rows);
+      // Træningen ligger i databasen nu — kladden har gjort sit.
+      clearDraft();
 
       // Achievement-tjek
       const strengthExs = exercises.filter((e) => e.type !== "plyo");
@@ -160,9 +221,9 @@ export default function Workout() {
           <Button
             variant="outline"
             className="!w-auto px-4 !min-h-[48px] !text-base"
-            onClick={() => navigate("/")}
+            onClick={cancel}
           >
-            ✕ Annuller
+            {confirmCancel ? "Slet træning?" : "✕ Annuller"}
           </Button>
           <Button
             className="!w-auto px-5 !min-h-[48px] !text-base"
@@ -173,6 +234,12 @@ export default function Workout() {
           </Button>
         </div>
       </div>
+
+      {restored && (
+        <p className="mx-5 mb-3 rounded-2xl bg-indigo-50 text-indigo-600 text-sm font-medium px-4 py-3">
+          Vi fortsatte din igangværende træning — intet gik tabt.
+        </p>
+      )}
 
       {error && <p className="text-red-500 px-5 mb-3">Fejl: {error}</p>}
 
