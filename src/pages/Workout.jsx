@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   fetchExercisesForDay,
@@ -9,6 +9,8 @@ import {
 } from "../data/queries";
 import { suggestWeight, warmupWeight, incrementFor } from "../lib/progression";
 import { checkAchievements } from "../lib/achievements";
+import { loadDraft, saveDraft, clearDraft } from "../lib/workoutDraft";
+import { groupVariants, resolveSelected } from "../lib/variants";
 import ExerciseCard from "../components/ExerciseCard";
 import WorkoutSummaryModal from "../components/WorkoutSummaryModal";
 import Button from "../components/Button";
@@ -31,12 +33,49 @@ export default function Workout() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [summary, setSummary] = useState(null); // null | { newAchievements }
+  const [selection, setSelection] = useState({}); // primaryId -> valgt exerciseId
+  const [restored, setRestored] = useState(false); // kladde blev genskabt
+  const [confirmCancel, setConfirmCancel] = useState(false);
+
+  // Kladden skal kunne gemmes fra event-handlers uden for React-renderen
+  // (fx når fanen lukkes), så vi holder den seneste state i en ref.
+  const draftRef = useRef(null);
+  draftRef.current = {
+    day,
+    exercises,
+    data,
+    selection,
+    lastWeights,
+    progressedBy: progressedByMap,
+  };
+
+  // Rutinens øvelser med deres varianter, og hvilken variant der er valgt.
+  const groups = useMemo(
+    () => resolveSelected(groupVariants(exercises), selection),
+    [exercises, selection]
+  );
+  // De øvelser der rent faktisk bliver logget i dag.
+  const selectedExercises = useMemo(() => groups.map((g) => g.selected), [groups]);
 
   useEffect(() => {
     let cancelled = false;
+    // Har vi en kladde fra en afbrudt træning, viser vi den med det samme —
+    // uden at vente på netværket, som måske slet ikke svarer i kælderen.
+    const draft = loadDraft(day);
+    if (draft) {
+      setExercises(draft.exercises);
+      setData(draft.data);
+      setSelection(draft.selection ?? {});
+      setLastWeights(draft.lastWeights ?? {});
+      setProgressedByMap(draft.progressedBy ?? {});
+      setLoading(false);
+      setRestored(true);
+    }
     (async () => {
       try {
         const list = await fetchExercisesForDay(day);
+        // Forslag beregnes for alle varianter, ikke kun dem der er valgt nu —
+        // så koster det ikke et netværkskald midt i træningen at bytte øvelse.
         const strength = list.filter((e) => e.type !== "plyo");
         const lastWeightsAcc = {};
         const progressedAcc = {};
@@ -65,11 +104,16 @@ export default function Workout() {
         );
         if (cancelled) return;
         setExercises(list);
-        setData(Object.fromEntries(entries));
+        // Kladdens indtastninger vinder over de nyberegnede forslag; øvelser
+        // der er kommet til siden kladden blev gemt, får forslagene.
+        setData((prev) =>
+          draft ? { ...Object.fromEntries(entries), ...prev } : Object.fromEntries(entries)
+        );
         setLastWeights(lastWeightsAcc);
         setProgressedByMap(progressedAcc);
       } catch (e) {
-        if (!cancelled) setError(e.message);
+        // Fejler netværket, men har vi en kladde, kan træningen fortsætte.
+        if (!cancelled && !draft) setError(e.message);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -79,7 +123,45 @@ export default function Workout() {
     };
   }, [day]);
 
+  // Autogem kladden mens der tastes. Debounce, så vi ikke skriver til
+  // localStorage ved hvert tastetryk.
+  useEffect(() => {
+    if (loading || summary || exercises.length === 0) return;
+    const t = setTimeout(() => saveDraft(draftRef.current), 400);
+    return () => clearTimeout(t);
+  }, [data, exercises, selection, loading, summary]);
+
+  // Når mobilen sender appen i baggrunden, kan fanen blive smidt ud uden
+  // varsel — så skal det seneste også være gemt, ikke kun det debouncede.
+  useEffect(() => {
+    if (loading || summary) return;
+    const flush = () => {
+      if (draftRef.current?.exercises?.length > 0) saveDraft(draftRef.current);
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", flush);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", flush);
+    };
+  }, [loading, summary]);
+
   const update = (exId, next) => setData((d) => ({ ...d, [exId]: next }));
+
+  const selectVariant = (primaryId, exerciseId) =>
+    setSelection((s) => ({ ...s, [primaryId]: exerciseId }));
+
+  const cancel = () => {
+    if (!confirmCancel) {
+      setConfirmCancel(true);
+      return;
+    }
+    clearDraft();
+    navigate("/");
+  };
 
   const finish = async () => {
     setSaving(true);
@@ -87,7 +169,7 @@ export default function Workout() {
     try {
       const workout = await createWorkout(day);
       const rows = [];
-      for (const ex of exercises) {
+      for (const ex of selectedExercises) {
         if (ex.type === "plyo") continue;
         const d = data[ex.id];
         rows.push({
@@ -110,9 +192,11 @@ export default function Workout() {
         });
       }
       await insertManySets(rows);
+      // Træningen ligger i databasen nu — kladden har gjort sit.
+      clearDraft();
 
       // Achievement-tjek
-      const strengthExs = exercises.filter((e) => e.type !== "plyo");
+      const strengthExs = selectedExercises.filter((e) => e.type !== "plyo");
       const progressed = [];
       const notProgressed = [];
       let maxWeight = 0;
@@ -160,9 +244,9 @@ export default function Workout() {
           <Button
             variant="outline"
             className="!w-auto px-4 !min-h-[48px] !text-base"
-            onClick={() => navigate("/")}
+            onClick={cancel}
           >
-            ✕ Annuller
+            {confirmCancel ? "Slet træning?" : "✕ Annuller"}
           </Button>
           <Button
             className="!w-auto px-5 !min-h-[48px] !text-base"
@@ -174,23 +258,31 @@ export default function Workout() {
         </div>
       </div>
 
+      {restored && (
+        <p className="mx-5 mb-3 rounded-2xl bg-indigo-50 text-indigo-600 text-sm font-medium px-4 py-3">
+          Vi fortsatte din igangværende træning — intet gik tabt.
+        </p>
+      )}
+
       {error && <p className="text-red-500 px-5 mb-3">Fejl: {error}</p>}
 
       <div className="px-5 flex flex-col gap-5">
-        {exercises.map((ex) => (
+        {groups.map(({ primary, variants, selected }) => (
           <ExerciseCard
-            key={ex.id}
-            exercise={ex}
-            value={data[ex.id]}
-            onChange={(next) => update(ex.id, next)}
-            progressedBy={progressedByMap[ex.id] ?? null}
+            key={primary.id}
+            exercise={selected}
+            variants={variants}
+            onSelectVariant={(id) => selectVariant(primary.id, id)}
+            value={data[selected.id]}
+            onChange={(next) => update(selected.id, next)}
+            progressedBy={progressedByMap[selected.id] ?? null}
           />
         ))}
       </div>
 
       {summary && (
         <WorkoutSummaryModal
-          exercises={exercises}
+          exercises={selectedExercises}
           data={data}
           lastWeights={lastWeights}
           newAchievements={summary.newAchievements}

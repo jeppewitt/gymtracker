@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchAllExercises } from "../data/queries";
+import { groupVariants } from "../lib/variants";
 
 const DAY_LABELS = { mon: "Mandag", wed: "Onsdag", fri: "Fredag" };
 
@@ -15,9 +16,14 @@ export default function History() {
       .catch((e) => setError(e.message));
   }, []);
 
+  // Varianter (fx dødløft under romanian deadlift) har egen historik, men
+  // hører visuelt sammen med hovedøvelsen — derfor lister vi dem lige under.
   const byDay = ["mon", "wed", "fri"].map((day) => ({
     day,
-    items: exercises.filter((e) => e.day === day),
+    items: groupVariants(exercises.filter((e) => e.day === day)).flatMap(
+      ({ variants }) =>
+        variants.map((e, i) => ({ ...e, isVariant: i > 0 }))
+    ),
   }));
 
   return (
@@ -41,9 +47,18 @@ export default function History() {
               <button
                 key={e.id}
                 onClick={() => navigate(`/history/${e.id}`)}
-                className="bg-white rounded-2xl border border-slate-200 shadow-sm px-5 py-4 text-left text-lg font-medium text-slate-800 flex items-center justify-between active:scale-[0.99] transition"
+                className={`bg-white rounded-2xl border border-slate-200 shadow-sm px-5 py-4 text-left text-lg font-medium text-slate-800 flex items-center justify-between gap-3 active:scale-[0.99] transition ${
+                  e.isVariant ? "ml-5" : ""
+                }`}
               >
-                {e.name}
+                <span className="flex items-center gap-2 min-w-0">
+                  <span className="truncate">{e.name}</span>
+                  {e.isVariant && (
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 shrink-0">
+                      variant
+                    </span>
+                  )}
+                </span>
                 <span className="text-slate-300">›</span>
               </button>
             ))}

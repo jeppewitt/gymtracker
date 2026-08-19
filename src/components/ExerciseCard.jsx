@@ -13,7 +13,16 @@ function parseW(str) {
 }
 
 // progressedBy: number | null — hvis > 0 vises et "↑ +Xkg"-badge
-export default function ExerciseCard({ exercise, value, onChange, progressedBy }) {
+// variants: øvelsen selv + de varianter den kan byttes ud med (fx romanian
+// deadlift ↔ dødløft). Er der kun én, vises ingen vælger.
+export default function ExerciseCard({
+  exercise,
+  value,
+  onChange,
+  progressedBy,
+  variants = [],
+  onSelectVariant,
+}) {
   const isPlyo = exercise.type === "plyo";
 
   const setWarmup = (w) => onChange({ ...value, warmupWeight: w });
@@ -58,6 +67,24 @@ export default function ExerciseCard({ exercise, value, onChange, progressedBy }
           </span>
         </div>
       </div>
+
+      {variants.length > 1 && (
+        <div className="flex gap-1.5 mb-4 p-1 rounded-2xl bg-slate-100">
+          {variants.map((v) => (
+            <button
+              key={v.id}
+              onClick={() => onSelectVariant?.(v.id)}
+              className={`flex-1 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
+                v.id === exercise.id
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-500"
+              }`}
+            >
+              {v.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       {isPlyo ? (
         <p className="text-slate-500">Påmindelse — udfør sættene, ingen logning.</p>

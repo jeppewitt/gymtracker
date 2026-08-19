@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { getAchievementList } from "../lib/achievements";
+import { loadAnyDraft, draftHasInput, clearDraft } from "../lib/workoutDraft";
 import AchievementBadge from "../components/AchievementBadge";
 
 const DAYS = [
@@ -10,9 +11,25 @@ const DAYS = [
   { key: "fri", label: "Fredag", sub: "Press · ro · hip thrust" },
 ];
 
+const DAY_LABELS = { mon: "Mandag", wed: "Onsdag", fri: "Fredag" };
+
+// "kl. 17.42" hvis kladden er fra i dag, ellers dato + tid.
+function formatSaved(ts) {
+  const d = new Date(ts);
+  const sameDay = d.toDateString() === new Date().toDateString();
+  const time = d.toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" });
+  return sameDay ? `kl. ${time}` : `${d.toLocaleDateString("da-DK")} ${time}`;
+}
+
 export default function Home() {
   const navigate = useNavigate();
   const achievements = useMemo(() => getAchievementList(), []);
+  // Kladde fra en træning der blev afbrudt (fx fordi mobilen ryddede appen
+  // ud af hukommelsen). Vi tilbyder at fortsætte i stedet for at starte forfra.
+  const [draft, setDraft] = useState(() => {
+    const d = loadAnyDraft();
+    return draftHasInput(d) ? d : null;
+  });
   const unlocked = achievements.filter((a) => a.unlockedAt);
   // Nyeste tre badges som teaser på forsiden; er intet låst op, viser vi
   // de tre første som låste skiver, så man kan se der er noget at jagte.
@@ -29,6 +46,32 @@ export default function Home() {
       <h1 className="text-4xl font-extrabold mb-10 bg-gradient-to-r from-indigo-500 to-violet-500 bg-clip-text text-transparent">
         Vælg dag
       </h1>
+
+      {draft && (
+        <div className="mb-4 rounded-3xl border border-indigo-200 bg-indigo-50 p-5">
+          <p className="text-lg font-bold text-indigo-900">Træning i gang</p>
+          <p className="text-indigo-500 text-sm mb-4">
+            {DAY_LABELS[draft.day] ?? draft.day} · gemt {formatSaved(draft.updatedAt)}
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => navigate(`/workout/${draft.day}`)}
+              className="flex-1 rounded-2xl bg-gradient-to-r from-indigo-500 to-violet-500 text-white font-semibold py-3 active:scale-[0.99] transition"
+            >
+              Fortsæt
+            </button>
+            <button
+              onClick={() => {
+                clearDraft();
+                setDraft(null);
+              }}
+              className="rounded-2xl border border-indigo-200 text-indigo-500 font-semibold px-4 py-3"
+            >
+              Kassér
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-col gap-4">
         {DAYS.map((d) => (
